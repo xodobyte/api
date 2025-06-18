@@ -27,11 +27,13 @@ app.post("/api/download", async (req, res) => {
   try {
     const passthrough = new PassThrough();
 
-    const ytdlProcess = exec(url, {
-      format: "bestaudio",
-      stdout: "pipe",
-      output: "-",
-    });
+    console.log("▶️ Downloading from:", url);
+
+const ytdlProcess = exec(url, {
+  format: "bestaudio",
+  output: "-", // output to stdout
+});
+
 
 
     app.options("*", (req, res) => {
@@ -46,14 +48,15 @@ app.post("/api/download", async (req, res) => {
     res.setHeader("Content-Type", "audio/mpeg");
 
     ffmpeg(ytdlProcess.stdout)
-      .audioBitrate(128)
-      .format("mp3")
-      .on("error", (ffmpegErr) => {
-        console.error("FFmpeg error:", ffmpegErr);
-        if (!res.headersSent)
-          res.status(500).json({ error: "Failed to convert audio" });
-      })
-      .pipe(passthrough);
+  .audioBitrate(128)
+  .format("mp3")
+  .on("error", (err) => {
+    console.error("❌ FFmpeg error:", err.message);
+    if (!res.headersSent)
+      res.status(500).json({ error: "Failed to convert audio" });
+  })
+  .pipe(res);
+
 
     passthrough.pipe(res);
   } catch (err) {
