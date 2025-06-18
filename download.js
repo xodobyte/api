@@ -32,6 +32,7 @@ app.post("/api/download", async (req, res) => {
 const ytdlProcess = exec(url, {
   format: "bestaudio",
   output: "-", // output to stdout
+  cookies: ./cookies.txt
 });
 
 
