@@ -4,6 +4,8 @@ const { exec } = require("youtube-dl-exec");
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("ffmpeg-static");
 const { PassThrough } = require("stream");
+const fs = require("fs");
+const cookies = fs.readFileSync("cookies.txt", "utf-8");
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
