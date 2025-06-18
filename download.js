@@ -5,7 +5,7 @@ const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("ffmpeg-static");
 const { PassThrough } = require("stream");
 const fs = require("fs");
-const cookies = fs.readFileSync("cookies.txt", "utf-8");
+const cookies = fs.readFileSync("cookies.json", "utf-8");
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -34,7 +34,7 @@ app.post("/api/download", async (req, res) => {
     const ytdlProcess = exec(url, {
       format: "bestaudio",
       output: "-", // output to stdout
-      cookies: 'cookies.txt',
+      cookies: 'cookies.json',
     });
 
     app.options("*", (req, res) => {
