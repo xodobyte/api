@@ -10,7 +10,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 const app = express();
 app.use(
   cors({
-    origin: "https://youtube2-mp3-tool.vercel.app", // or "*" for all origins
+    origin: "*", // or "*" for all origins
     methods: ["POST"],
     allowedHeaders: ["Content-Type"],
   })
@@ -33,6 +33,15 @@ app.post("/api/download", async (req, res) => {
       output: "-",
     });
 
+
+    app.options("*", (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "https://youtube2-mp3-tool.vercel.app");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.sendStatus(200);
+});
+
+    
     res.setHeader("Content-Disposition", 'attachment; filename="audio.mp3"');
     res.setHeader("Content-Type", "audio/mpeg");
 
