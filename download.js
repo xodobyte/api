@@ -8,7 +8,14 @@ const { PassThrough } = require("stream");
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://youtube2-mp3-tool.vercel.app", // or "*" for all origins
+    methods: ["POST"],
+    allowedHeaders: ["Content-Type"],
+  })
+);
+
 app.use(express.json());
 
 app.post("/api/download", async (req, res) => {
