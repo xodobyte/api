@@ -1,23 +1,21 @@
-import { exec } from "youtube-dl-exec";
-import ffmpeg from "fluent-ffmpeg";
-import ffmpegPath from "ffmpeg-static";
-import { PassThrough } from "stream";
+const express = require("express");
+const cors = require("cors");
+const { exec } = require("youtube-dl-exec");
+const ffmpeg = require("fluent-ffmpeg");
+const ffmpegPath = require("ffmpeg-static");
+const { PassThrough } = require("stream");
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Method Not Allowed" });
-    return;
-  }
+const app = express();
+app.use(cors());
+app.use(express.json());
 
+app.post("/api/download", async (req, res) => {
   const { url } = req.body;
   if (!url || typeof url !== "string") {
-    res.status(400).json({ error: "Invalid YouTube URL" });
-    return;
+    return res.status(400).json({ error: "Invalid YouTube URL" });
   }
-
-  console.log("Processing download for:", url);
 
   try {
     const passthrough = new PassThrough();
@@ -36,15 +34,18 @@ export default async function handler(req, res) {
       .format("mp3")
       .on("error", (ffmpegErr) => {
         console.error("FFmpeg error:", ffmpegErr);
-        res.status(500).json({ error: "Failed to convert audio" });
+        if (!res.headersSent)
+          res.status(500).json({ error: "Failed to convert audio" });
       })
       .pipe(passthrough);
 
     passthrough.pipe(res);
-
   } catch (err) {
     console.error("Download failed:", err);
     if (!res.headersSent)
       res.status(500).json({ error: "Failed to process audio" });
   }
-}
+});
+
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
