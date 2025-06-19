@@ -5,36 +5,32 @@ const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("ffmpeg-static");
 const { PassThrough } = require("stream");
 const fs = require("fs");
-const cookies = fs.readFileSync("cookies.json", "utf-8");
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 const app = express();
-app.use(
-  cors({
-    origin: "*", // or "*" for all origins
-    methods: ["POST"],
-    allowedHeaders: ["Content-Type"],
-  })
-);
 
+// ========== Global CORS + body parser ==========
+app.use(cors({
+  origin: "https://youtube2-mp3-tool.vercel.app",
+  methods: ["POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type"],
+}));
 app.use(express.json());
 
+// ========== Download endpoint ==========
 app.post("/api/download", async (req, res) => {
   const { url } = req.body;
   if (!url || typeof url !== "string") {
     return res.status(400).json({ error: "Invalid YouTube URL" });
   }
 
-  try {
-    const passthrough = new PassThrough();
-
-    console.log("▶️ Downloading from:", url);
+  console.log("▶️ Downloading from:", url);
 
     const ytdlProcess = exec(url, {
       format: "bestaudio",
       output: "-", // output to stdout
-      cookies: 'cookies.json',
+      cookies: 'cookies.txt',
     });
 
     app.options("*", (req, res) => {
@@ -47,8 +43,9 @@ app.post("/api/download", async (req, res) => {
       res.sendStatus(200);
     });
 
-    res.setHeader("Content-Disposition", 'attachment; filename="audio.mp3"');
-    res.setHeader("Content-Type", "audio/mpeg");
+    // Tell the browser to download it as "audio.mp3"
+  res.setHeader("Content-Disposition", 'attachment; filename="audio.mp3"');
+  res.setHeader("Content-Type", "audio/mpeg");
 
     ffmpeg(ytdlProcess.stdout)
       .audioBitrate(128)
