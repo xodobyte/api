@@ -3,29 +3,39 @@ const cors = require("cors");
 const { exec } = require("youtube-dl-exec");
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("ffmpeg-static");
+const fs = require("fs");
+const path = require("path");
+const https = require("https");
+const { v4: uuidv4 } = require("uuid");
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 const app = express();
 
-// CORS configuration
 app.use(cors({
-  origin: "https://youtube2-mp3-tool.vercel.app", // your frontend origin
+  origin: "https://youtube2-mp3-tool.vercel.app",
   methods: ["POST", "OPTIONS"],
   allowedHeaders: ["Content-Type"]
 }));
 
 app.use(express.json());
 
-// Helper to sanitize filenames
 const sanitize = title => title.replace(/[\\/:*?"<>|]+/g, "_").slice(0, 200);
 
-app.get("/api/health", (req, res) => {
-  res.json({
-    status: "ok",
-    time: new Date().toISOString()
+// Helper to download image to disk
+const downloadImage = (url, dest) => {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(dest);
+    https.get(url, (response) => {
+      response.pipe(file);
+      file.on("finish", () => {
+        file.close(() => resolve(dest));
+      });
+    }).on("error", (err) => {
+      fs.unlink(dest, () => reject(err));
+    });
   });
-});
+};
 
 app.post("/api/download", async (req, res) => {
   const { url } = req.body;
@@ -34,7 +44,6 @@ app.post("/api/download", async (req, res) => {
   }
 
   try {
-    // 1. Fetch metadata JSON for title & thumbnail
     const info = await exec(url, {
       dumpSingleJson: true,
       noWarnings: true,
@@ -45,37 +54,47 @@ app.post("/api/download", async (req, res) => {
     const thumbnailUrl = info.thumbnail;
 
     console.log(`▶️ Processing "${title}"`);
-
-    // 2. Set headers to name file after video title
-    res.setHeader("Content-Disposition", `attachment; filename="${title}.mp3"`);
+    res.setHeader("Content-Disposition", `attachment; filename=\"${title}.mp3\"`);
     res.setHeader("Content-Type", "audio/mpeg");
 
-    // 3. Spawn yt-dlp to stream best audio
     const ytdlProcess = exec(url, {
       format: "bestaudio",
       output: "-",
       cookies: "cookies.txt"
     });
 
-    // 4. Stream through FFmpeg to embed cover and metadata
-    ffmpeg()
-      .input(ytdlProcess.stdout)
-      .input(thumbnailUrl)
-      .audioBitrate(128)
-      .format("mp3")
-      .outputOptions(
-        // map audio and image inputs
-        '-map', '0:a',
-        '-map', '1',
-        // set ID3 metadata
-        '-metadata', `title=${title}`,
-        // embed cover art
-        '-disposition:v:0', 'attached_pic'
-      )
-      .on("error", err => {
+    let thumbnailPath;
+    if (thumbnailUrl) {
+      const tmpName = uuidv4() + ".jpg";
+      thumbnailPath = path.join(__dirname, tmpName);
+      await downloadImage(thumbnailUrl, thumbnailPath);
+    }
+
+    const ffmpegCommand = ffmpeg().input(ytdlProcess.stdout).audioBitrate(128).format("mp3");
+
+    if (thumbnailPath) {
+      ffmpegCommand
+        .input(thumbnailPath)
+        .outputOptions(
+          "-map", "0:a",
+          "-map", "1",
+          "-metadata", `title=${title}`,
+          "-disposition:v:0", "attached_pic"
+        );
+    } else {
+      ffmpegCommand.outputOptions("-metadata", `title=${title}`);
+    }
+
+    ffmpegCommand
+      .on("error", (err) => {
         console.error("❌ FFmpeg error:", err.message);
         if (!res.headersSent) {
           res.status(500).json({ error: "Failed to convert audio" });
+        }
+      })
+      .on("end", () => {
+        if (thumbnailPath && fs.existsSync(thumbnailPath)) {
+          fs.unlink(thumbnailPath, () => {});
         }
       })
       .pipe(res, { end: true });
