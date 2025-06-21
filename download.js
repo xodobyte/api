@@ -20,6 +20,13 @@ app.use(express.json());
 // Helper to sanitize filenames
 const sanitize = title => title.replace(/[\\/:*?"<>|]+/g, "_").slice(0, 200);
 
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    time: new Date().toISOString()
+  });
+});
+
 app.post("/api/download", async (req, res) => {
   const { url } = req.body;
   if (!url || typeof url !== "string") {
