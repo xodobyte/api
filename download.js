@@ -31,7 +31,7 @@ app.post("/api/download", async (req, res) => {
     const ytdlProcess = exec(url, {
       format: "bestaudio",
       output: "-",
-      "cookies-from-browser": "chrome" // must be Netscape format
+      cookies: "cookies.txt" // must be Netscape format
     });
 
     // Set headers for MP3 download
