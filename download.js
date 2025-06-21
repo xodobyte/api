@@ -54,7 +54,9 @@ app.post("/api/download", async (req, res) => {
     const thumbnailUrl = info.thumbnail;
 
     console.log(`▶️ Processing "${title}"`);
-    res.setHeader("Content-Disposition", `attachment; filename=\"${title}.mp3\"`);
+
+    // Set headers before piping
+    res.setHeader("Content-Disposition", `attachment; filename="${title}.mp3"`);
     res.setHeader("Content-Type", "audio/mpeg");
 
     const ytdlProcess = exec(url, {
@@ -70,8 +72,12 @@ app.post("/api/download", async (req, res) => {
       await downloadImage(thumbnailUrl, thumbnailPath);
     }
 
-    const ffmpegCommand = ffmpeg().input(ytdlProcess.stdout).audioBitrate(128).format("mp3");
+    const ffmpegCommand = ffmpeg()
+      .input(ytdlProcess.stdout)
+      .audioBitrate(128)
+      .format("mp3");
 
+    // Add thumbnail and metadata if available
     if (thumbnailPath) {
       ffmpegCommand
         .input(thumbnailPath)
@@ -79,10 +85,14 @@ app.post("/api/download", async (req, res) => {
           "-map", "0:a",
           "-map", "1",
           "-metadata", `title=${title}`,
-          "-disposition:v:0", "attached_pic"
+          "-disposition:v:0", "attached_pic",
+          "-id3v2_version", "3"
         );
     } else {
-      ffmpegCommand.outputOptions("-metadata", `title=${title}`);
+      ffmpegCommand.outputOptions(
+        "-metadata", `title=${title}`,
+        "-id3v2_version", "3"
+      );
     }
 
     ffmpegCommand
