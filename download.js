@@ -18,7 +18,7 @@ app.post("/api/download", async (req, res) => {
   }
 
   try {
-    const apiUrl = `https://coderx-api.onrender.com/v1/downloaders/coderx/download/ytmp3v2?query=hello${encodeURIComponent(url)}`;
+    const apiUrl = `https://coderx-api.onrender.com/v1/downloaders/coderx/download/ytmp3v2?query=${encodeURIComponent(url)}`;
     const response = await fetch(apiUrl);
     const data = await response.json();
 
