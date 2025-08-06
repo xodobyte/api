@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { fetch } = require("undici");
+const { request } = require("undici");
 
 const app = express();
 app.use(cors({
@@ -22,13 +22,28 @@ app.post("/api/download", async (req, res) => {
     if (match) url = `https://www.youtube.com/watch?v=${match[1]}`;
   }
 
+  const apiUrl = `https://coderxsa-api.onrender.com/v1/downloaders/coderx/download/ytmp3v2?query=${encodeURIComponent(url)}`;
   try {
-    const apiUrl = `https://coderxsa-api.onrender.com/v1/downloaders/coderx/download/ytmp3v2?query=${encodeURIComponent(url)}`;
-    const response = await fetch(apiUrl);
-    const data = await response.json();
+    const { statusCode, body } = await request(apiUrl, {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        Accept: "application/json",
+      },
+      connectTimeout: 0,
+    });
 
-    if (!data.success || !data.result?.download?.audio)
+    if (statusCode !== 200) {
+      console.error("⛔ Non-200 from API:", statusCode);
+      return res.status(500).json({ error: `External API error: ${statusCode}` });
+    }
+
+    const buffer = Buffer.from(await body.arrayBuffer());
+    const data = JSON.parse(buffer.toString("utf-8"));
+
+    if (!data.success || !data.result?.download?.audio) {
       return res.status(500).json({ error: "Failed to fetch audio from external API" });
+    }
 
     return res.json({
       title: sanitize(data.result.title || "audio"),
@@ -36,11 +51,11 @@ app.post("/api/download", async (req, res) => {
       thumbnail: data.result.thumbnail || null,
     });
   } catch (err) {
-    console.error("Download API error:", err);
-    return res.status(500).json({ error: "Server error. Try again later." });
+    console.error("🔥 Download API request failed:", err);
+    return res.status(500).json({ error: err.name === "AbortError" ? "Timeout hit." : "Server error. Try again later." });
   }
 });
 
 app.listen(process.env.PORT || 8080, () => {
-  console.log("✅ API server running");
+  console.log("✅ API server running with request() override");
 });
