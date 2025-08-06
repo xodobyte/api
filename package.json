@@ -13,6 +13,7 @@
     "uuid": "^11.1.0",
     "youtube-dl-exec": "^3.0.22",
     "youtubei.js": "^14.0.0",
-    "ytdl-core": "^4.11.5"
+    "ytdl-core": "^4.11.5",
+    "undici": "^7.13.0"
   }
 }
